@@ -1,0 +1,1373 @@
+{% extends "base.html" %}
+
+{% block title %}Annotate {{ display_name }} - Image Annotation System{% endblock %}
+
+{% block extra_css %}
+<style>
+    .annotation-container {
+        position: relative;
+        display: block;
+        overflow: hidden;
+        border: 2px solid #ddd;
+        border-radius: 8px;
+        width: 800px;
+        height: 800px;
+        margin: 0 auto;
+    }
+    .annotation-canvas {
+        border: none;
+        border-radius: 6px;
+        cursor: crosshair;
+        width: 800px;
+        height: 800px;
+    }
+    .bbox-overlay {
+        position: absolute;
+        border: 2px solid #00ff00;
+        background: rgba(0, 255, 0, 0.1);
+        pointer-events: none;
+    }
+    .flag-item {
+        transition: all 0.3s ease;
+        margin-bottom: 15px;
+        border-radius: 8px;
+        padding: 15px;
+        border: 2px solid #ddd;
+    }
+    .flag-unselected {
+        background: #ffffff;
+        border-color: #ddd;
+    }
+    .flag-selected {
+        background: #e8f5e8;
+        border-color: #4caf50;
+        box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+    }
+    .flag-annotated {
+        background: #ffeaea;
+        border-color: #d32f2f;
+        box-shadow: 0 2px 8px rgba(211, 47, 47, 0.2);
+    }
+    .bbox-info {
+        background: #f8f9fa;
+        border-radius: 5px;
+        padding: 8px;
+        margin: 5px 0;
+        font-size: 12px;
+        font-family: monospace;
+        border-left: 3px solid #4caf50;
+    }
+    .coordinates-display {
+        background: #e3f2fd;
+        border-radius: 5px;
+        padding: 8px;
+        margin: 8px 0;
+        font-size: 12px;
+        font-family: monospace;
+        border-left: 3px solid #2196f3;
+    }
+    .drawing-mode {
+        background: #fff3cd !important;
+        border-color: #ffc107 !important;
+        color: #856404 !important;
+    }
+    .flag-btn {
+        transition: all 0.3s ease;
+        border-radius: 8px;
+        padding: 12px;
+        margin-bottom: 8px;
+        text-align: left;
+        position: relative;
+    }
+    .flag-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .flag-btn.active {
+        background: #4caf50;
+        border-color: #4caf50;
+        color: white;
+    }
+    .flag-btn.annotated {
+        background: #d32f2f;
+        border-color: #d32f2f;
+        color: white;
+    }
+    .flags-scrollable {
+        max-height: 800px;
+        overflow-y: auto;
+        padding-right: 10px;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 15px;
+        background-color: #f8f9fa;
+    }
+    .flags-scrollable::-webkit-scrollbar {
+        width: 8px;
+    }
+    .flags-scrollable::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+    }
+    .flags-scrollable::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 4px;
+    }
+    .flags-scrollable::-webkit-scrollbar-thumb:hover {
+        background: #a8a8a8;
+    }
+    
+
+    .deselect-btn {
+        background: #6c757d;
+        border-color: #6c757d;
+        color: white;
+    }
+    .deselect-btn:hover {
+        background: #5a6268;
+        border-color: #545b62;
+    }
+    
+    #referringExpressionContainer {
+        transition: all 0.3s ease;
+    }
+    
+    #referringExpressionContainer .card {
+        border-left: 4px solid #007bff;
+    }
+    
+    #referringExpressionInput:focus {
+        border-color: #007bff;
+        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12 mb-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <h2>
+                <i class="fas fa-edit me-2"></i>Annotating: {{ display_name }}
+            </h2>
+            <div>
+                <a href="{{ url_for('dashboard', show='true') }}" class="btn btn-outline-secondary me-2">
+                    <i class="fas fa-arrow-left me-1"></i>Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Left side - Image with annotation canvas -->
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="fas fa-image me-2"></i>Image Annotation
+                </h5>
+                
+                <!-- Navigation controls -->
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <button id="prevBtn" class="btn btn-outline-secondary">
+                        <i class="fas fa-chevron-left me-1"></i>Previous
+                    </button>
+                    <button id="nextBtn" class="btn btn-outline-secondary">
+                        Next<i class="fas fa-chevron-right ms-1"></i>
+                    </button>
+                </div>
+                
+                <div class="annotation-container mx-auto">
+                    <canvas id="annotationCanvas" class="annotation-canvas" width="800" height="800"></canvas>
+                    <div id="bboxOverlays"></div>
+                </div>
+                
+                <!-- Image Description/Instruction for Edited Images -->
+                {% if image_metadata and image_metadata.get('type') == 'edited' %}
+                <div class="mt-3">
+                    <div class="card">
+                        <div class="card-header bg-warning text-dark">
+                            <h6 class="mb-0">
+                                <i class="fas fa-info-circle me-2"></i>Image Information
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            {% if image_metadata.get('description') %}
+                            <div class="mb-3">
+                                <h6><i class="fas fa-file-alt me-1"></i>Description:</h6>
+                                <div class="bg-light p-3 rounded">
+                                    <p class="mb-0" style="font-size: 0.9em; line-height: 1.4;">{{ image_metadata.description }}</p>
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                            {% if image_metadata.get('instruction') %}
+                            <div class="mb-3">
+                                <h6><i class="fas fa-tools me-1"></i>Edit Instructions:</h6>
+                                <div class="bg-light p-3 rounded">
+                                    {% if image_metadata.instruction.get('Effect') %}
+                                    <p class="mb-2"><strong>Effect:</strong> {{ image_metadata.instruction.Effect }}</p>
+                                    {% endif %}
+                                    {% if image_metadata.instruction.get('Change Target') %}
+                                    <p class="mb-2"><strong>Change Target:</strong> {{ image_metadata.instruction['Change Target'] }}</p>
+                                    {% endif %}
+                                    {% if image_metadata.instruction.get('Explanation') %}
+                                    <p class="mb-2"><strong>Explanation:</strong></p>
+                                    <ul class="mb-0">
+                                        {% for item in image_metadata.instruction.Explanation %}
+                                        <li>{{ item }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                
+                <!-- Referring Expression Input -->
+                <div id="referringExpressionContainer" class="mt-3" style="display: none;">
+                    <div class="card">
+                        <div class="card-body">
+                            <h6 class="card-title">
+                                <i class="fas fa-comment me-2"></i>Referring Expression
+                            </h6>
+                            <p class="card-text text-muted small">
+                                Describe what this bounding box refers to (optional)
+                            </p>
+                            <div class="input-group">
+                                <input type="text" id="referringExpressionInput" class="form-control" 
+                                       placeholder="e.g., 'shadows pointing left', 'lighting from top-right', 'inconsistent perspective'">
+                                <button class="btn btn-primary" id="saveReferringExpressionBtn">
+                                    <i class="fas fa-save me-1"></i>Save
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-3">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Instructions:</strong> 
+                        Select a flag on the right, then click and drag on the image to draw bounding boxes. 
+                        Bounding boxes are automatically saved. You can draw multiple boxes for each flag.
+                        Click the same flag again to deselect it and view the image without bounding boxes.
+                    </div>
+                    
+                    <!-- Test button for referring expression -->
+                    <button id="testReferringExpressionBtn" class="btn btn-warning btn-sm mt-2">
+                        <i class="fas fa-test-tube me-1"></i>Test Referring Expression Input
+                    </button>
+                </div>
+                
+                <!-- Current drawing status -->
+                <div id="drawingStatus" class="mt-3" style="display: none;">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-pencil-alt me-2"></i>
+                        <strong>Drawing Mode:</strong> 
+                        <span id="currentFlag">None</span> - Click and drag to draw bounding box
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Right side - Flag selection and annotation display -->
+    <div class="col-lg-5">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="fas fa-tags me-2"></i>Annotation Flags
+                </h5>
+                
+                <!-- Deselect button -->
+                <div class="mb-3">
+                    <button id="deselectBtn" class="btn deselect-btn w-100" style="display: none;">
+                        <i class="fas fa-times me-2"></i>Deselect Current Flag
+                    </button>
+                </div>
+                
+                <!-- Flag selection -->
+                <div class="mb-4">
+                    <h6 class="mb-3">Click a flag to start annotating:</h6>
+                    <div id="flagSelection" class="flags-scrollable">
+                        {% for flag_name, description in flags.items() %}
+                        <div class="d-flex gap-2 align-items-center mb-2">
+                            <button class="btn btn-outline-primary flag-btn flex-grow-1" data-flag="{{ flag_name }}">
+                                <strong>{{ flag_name|title }}</strong>
+                            </button>
+                            <button class="btn btn-sm btn-danger remove-flag-btn" data-flag="{{ flag_name }}" title="Remove all bounding boxes for this flag" style="display: none;">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Big description box at the bottom -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="fas fa-info-circle me-2"></i>Flag Descriptions
+                </h5>
+                <div class="row">
+                    {% for flag_name, description in flags.items() %}
+                    <div class="col-md-6 col-lg-3 mb-3">
+                        <div class="p-3 border rounded">
+                            <h6 class="fw-bold text-primary">{{ flag_name|title }}</h6>
+                            <p class="text-muted mb-0 small">{{ description }}</p>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden inputs for current state -->
+<input type="hidden" id="currentImageName" value="{{ image_name }}">
+<input type="hidden" id="currentAnnotations" value="{{ annotations|tojson }}">
+<input type="hidden" id="lastSelectedFlag" value="{{ last_selected_flag }}">
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let canvas, ctx;
+let isDrawing = false;
+let startX, startY;
+let currentFlag = null;
+let annotations = {{ annotations|tojson }};
+let imageLoaded = false;
+let currentBboxIndex = -1; // Track which bbox we're currently adding referring expression for
+let referringExpressionInput = null;
+let saveReferringExpressionBtn = null;
+let lastCreatedBboxIndex = -1; // Store the last created bbox index persistently
+
+// Ensure annotations object has the right structure
+if (!annotations.flags) {
+    annotations.flags = {};
+}
+
+// Color palette for different flags
+const flagColors = {
+    'Shadows': '#FF6B6B',
+    'Lighting Match': '#4ECDC4',
+    'Color Cast Consistency': '#45B7D1',
+    'Relative Size / Scale': '#96CEB4',
+    'Perspective / Straight-Line Convergence': '#FFEAA7',
+    'Front–Back Overlap': '#DDA0DD',
+    'Contact & Support': '#98D8C8',
+    'Focus / Blur with Depth': '#F7DC6F',
+    'Reflections & Transparency': '#FF9F43',
+    'Material Shine': '#6C5CE7',
+    'Texture / Pattern Follow-Through': '#00B894',
+    'Text & Small Details': '#FD79A8',
+    'Object Completeness & Counts': '#74B9FF'
+};
+
+// Canvas dimensions
+const CANVAS_WIDTH = 800;
+const CANVAS_HEIGHT = 800;
+
+// Normalize coordinates to 1-1000 range
+function normalizeCoordinate(value, maxDimension) {
+    return Math.max(1, Math.min(1000, Math.round((value / maxDimension) * 1000)));
+}
+
+// Denormalize coordinates from 1-1000 range back to canvas coordinates
+function denormalizeCoordinate(normalizedValue, maxDimension) {
+    return (normalizedValue / 1000) * maxDimension;
+}
+
+// Save referring expression for the current bounding box
+function saveReferringExpression() {
+    console.log('=== SAVE REFERRING EXPRESSION STARTED ===');
+    if (currentFlag && currentBboxIndex >= 0 && referringExpressionInput.value.trim()) {
+        const expression = referringExpressionInput.value.trim();
+        
+        // Ensure the flag and bbox exist
+        console.log('=== SAVE REFERRING EXPRESSION DEBUG ===');
+        console.log('Current flag:', currentFlag);
+        console.log('Current bbox index:', currentBboxIndex);
+        console.log('Type of currentBboxIndex:', typeof currentBboxIndex);
+        console.log('Annotations flags:', annotations.flags);
+        console.log('Current flag bboxes:', annotations.flags[currentFlag]?.bboxes);
+        console.log('Bbox at current index:', annotations.flags[currentFlag]?.bboxes[currentBboxIndex]);
+        
+        // Validate bbox index and use persistent index if needed
+        if (currentBboxIndex < 0) {
+            console.log('currentBboxIndex is invalid, trying lastCreatedBboxIndex:', lastCreatedBboxIndex);
+            if (lastCreatedBboxIndex >= 0) {
+                currentBboxIndex = lastCreatedBboxIndex;
+                console.log('Using lastCreatedBboxIndex:', currentBboxIndex);
+            } else {
+                console.error('Both currentBboxIndex and lastCreatedBboxIndex are invalid');
+                alert('Error: Invalid bounding box index. Please try drawing the bounding box again.');
+                return;
+            }
+        }
+        
+        if (annotations.flags[currentFlag] && annotations.flags[currentFlag].bboxes[currentBboxIndex]) {
+            const currentBbox = annotations.flags[currentFlag].bboxes[currentBboxIndex];
+            
+            // All bboxes should now be in new format, but handle fallback
+            if (currentBbox.coordinates) {
+                // New format: update referring expression
+                currentBbox.ref_exp = expression;
+                console.log('Updated ref_exp for bbox:', currentBbox);
+            } else if (Array.isArray(currentBbox)) {
+                // Fallback: convert old format to new format
+                annotations.flags[currentFlag].bboxes[currentBboxIndex] = {
+                    coordinates: currentBbox,
+                    ref_exp: expression
+                };
+                console.log('Converted old format to new format with ref_exp:', annotations.flags[currentFlag].bboxes[currentBboxIndex]);
+            } else {
+                console.error('Invalid bbox format:', currentBbox);
+                alert('Error: Invalid bounding box format. Please try drawing the bounding box again.');
+                return;
+            }
+            
+            // Save referring expression to server using the new endpoint
+            const referringExpressionData = {
+                image_name: document.getElementById('currentImageName').value,
+                flag_name: currentFlag,
+                bbox_index: currentBboxIndex,
+                referring_expression: expression
+            };
+            console.log('=== SENDING REFERRING EXPRESSION DATA ===');
+            console.log('Data being sent:', referringExpressionData);
+            console.log('Current annotations state:', annotations);
+            
+            // Save to server - don't hide container yet, wait for success
+            saveReferringExpressionToServer(referringExpressionData);
+            
+            // Clear input but DON'T hide container yet
+            referringExpressionInput.value = '';
+            
+            // Update display
+            updateFlagDisplay();
+            
+            console.log(`Saving referring expression for ${currentFlag} bbox ${currentBboxIndex}: ${expression}`);
+            console.log('Current local state - bbox at index:', annotations.flags[currentFlag].bboxes[currentBboxIndex]);
+        }
+    }
+}
+
+// Show referring expression input container
+function showReferringExpressionContainer() {
+    console.log('=== SHOWING REFERRING EXPRESSION CONTAINER ===');
+    console.log('Showing referring expression container for bbox index:', currentBboxIndex);
+    
+    // Validate bbox index before showing container
+    if (currentBboxIndex < 0) {
+        console.error('Cannot show referring expression container: invalid bbox index:', currentBboxIndex);
+        return;
+    }
+    
+    const container = document.getElementById('referringExpressionContainer');
+    console.log('Container element found:', container);
+    console.log('Container current display style:', container.style.display);
+    
+    // Force show the container
+    container.style.display = 'block';
+    container.style.visibility = 'visible';
+    container.style.opacity = '1';
+    
+    console.log('Container display style after change:', container.style.display);
+    console.log('Container is visible:', container.offsetParent !== null);
+    
+    // Try to focus the input
+    if (referringExpressionInput) {
+        referringExpressionInput.focus();
+        console.log('Input focused successfully');
+    } else {
+        console.error('Referring expression input not found!');
+    }
+    
+    // Add a visual indicator that the function was called
+    container.style.border = '3px solid red';
+    container.style.backgroundColor = '#fff3cd';
+}
+
+// Hide referring expression input container (preserves index)
+function hideReferringExpressionContainer() {
+    document.getElementById('referringExpressionContainer').style.display = 'none';
+    referringExpressionInput.value = '';
+    // Don't reset currentBboxIndex here - it might still be needed
+    console.log('Container hidden, currentBboxIndex preserved as:', currentBboxIndex);
+}
+
+// Hide referring expression input container and reset index (for cleanup)
+function hideReferringExpressionContainerAndReset() {
+    document.getElementById('referringExpressionContainer').style.display = 'none';
+    referringExpressionInput.value = '';
+    currentBboxIndex = -1;
+    lastCreatedBboxIndex = -1;
+    console.log('Container hidden and index reset to -1');
+}
+
+// Save referring expression to server
+function saveReferringExpressionToServer(data) {
+    console.log('=== CALLING UPDATE_REFERRING_EXPRESSION API ===');
+    console.log('API endpoint: /api/update_referring_expression');
+    console.log('Request data:', data);
+    
+    fetch('/api/update_referring_expression', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    }).then(response => {
+        console.log('Response received:', response);
+        return response.json();
+    })
+    .then(data => {
+        console.log('=== API RESPONSE ===');
+        console.log('Response data:', data);
+        if (data.success) {
+            console.log('Referring expression saved to server successfully!');
+            // Don't refresh from server - keep local state intact
+            console.log('Local annotations updated, no server refresh needed');
+            
+            // NOW hide the container after successful save
+            hideReferringExpressionContainer();
+            console.log('Container hidden after successful save');
+        } else {
+            console.error('Failed to save referring expression:', data.message);
+            // Don't hide container on failure - let user try again
+            console.log('Container kept visible for retry');
+        }
+    })
+    .catch(error => {
+        console.error('=== API ERROR ===');
+        console.error('Error calling API:', error);
+    });
+}
+
+// Initialize canvas
+document.addEventListener('DOMContentLoaded', function() {
+    canvas = document.getElementById('annotationCanvas');
+    ctx = canvas.getContext('2d');
+    
+    // Load image
+    const img = new Image();
+    img.onload = function() {
+        console.log('Image loaded successfully:', img.width, 'x', img.height);
+        console.log('Canvas dimensions:', canvas.width, 'x', canvas.height);
+        
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Calculate scaling to fit image to canvas without empty space
+        const scaleX = canvas.width / img.width;
+        const scaleY = canvas.height / img.height;
+        const scale = Math.max(scaleX, scaleY); // Use the larger scale to ensure full coverage
+        
+        // Calculate dimensions after scaling
+        const scaledWidth = img.width * scale;
+        const scaledHeight = img.height * scale;
+        
+        // Center the image on the canvas
+        const offsetX = (canvas.width - scaledWidth) / 2;
+        const offsetY = (canvas.height - scaledHeight) / 2;
+        
+        // Draw the image scaled and centered
+        ctx.drawImage(img, offsetX, offsetY, scaledWidth, scaledHeight);
+        
+        imageLoaded = true;
+        console.log('Image drawn to canvas, imageLoaded:', imageLoaded);
+        console.log('Image scaled to:', scaledWidth, 'x', scaledHeight, 'with scale:', scale);
+        
+        // Restore last selected flag if available
+        const lastSelectedFlag = document.getElementById('lastSelectedFlag').value;
+        if (lastSelectedFlag && lastSelectedFlag !== 'None') {
+            selectFlag(lastSelectedFlag);
+        }
+    };
+    
+    img.onerror = function() {
+        console.error('Failed to load image from:', "{{ url_for('serve_image', filename=image_name) }}");
+    };
+    
+    console.log('Attempting to load image from:', "{{ url_for('serve_image', filename=image_name) }}");
+    img.src = "{{ url_for('serve_image', filename=image_name) }}";
+    
+    // Initialize referring expression elements
+    referringExpressionInput = document.getElementById('referringExpressionInput');
+    saveReferringExpressionBtn = document.getElementById('saveReferringExpressionBtn');
+    
+    // Setup event listeners
+    setupCanvasEvents();
+    setupFlagSelection();
+    setupNavigation();
+    
+    // Initialize flag display and counters
+    updateFlagDisplay();
+    
+    // Force update after a short delay to ensure DOM is ready
+    setTimeout(() => updateFlagDisplay(), 100);
+    
+    // Refresh annotations from server
+    refreshAnnotationsFromServer();
+});
+
+function setupCanvasEvents() {
+    canvas.addEventListener('mousedown', startDrawing);
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseup', endDrawing);
+    canvas.addEventListener('mouseleave', endDrawing);
+}
+
+function setupFlagSelection() {
+    // Setup flag selection buttons
+    document.querySelectorAll('.flag-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const flagName = this.dataset.flag;
+            selectFlag(flagName);
+        });
+    });
+
+    // Setup deselect button
+    document.getElementById('deselectBtn').addEventListener('click', () => {
+        deselectCurrentFlag();
+    });
+    
+    // Setup remove buttons for each flag
+    document.querySelectorAll('.remove-flag-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const flagName = this.dataset.flag;
+            removeFlag(flagName);
+        });
+    });
+    
+    // Setup referring expression save button
+    saveReferringExpressionBtn.addEventListener('click', saveReferringExpression);
+    
+    // Setup Enter key for referring expression input
+    referringExpressionInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            saveReferringExpression();
+        }
+    });
+    
+    // Test referring expression container visibility
+    console.log('Referring expression container setup complete');
+    console.log('Container element:', document.getElementById('referringExpressionContainer'));
+    console.log('Input element:', referringExpressionInput);
+    console.log('Save button:', saveReferringExpressionBtn);
+    
+    // Setup test button for referring expression
+    document.getElementById('testReferringExpressionBtn').addEventListener('click', function() {
+        console.log('Test button clicked');
+        currentBboxIndex = 0; // Set a test index
+        showReferringExpressionContainer();
+    });
+}
+
+function selectFlag(flagName) {
+    // Clear previous selection
+    document.querySelectorAll('.flag-btn').forEach(b => b.classList.remove('active', 'annotated'));
+    document.querySelectorAll('.flag-item').forEach(f => f.classList.remove('flag-selected'));
+    
+    if (currentFlag === flagName) {
+        // Deselect current flag
+        deselectCurrentFlag();
+    } else {
+        // Select new flag
+        currentFlag = flagName;
+        document.querySelector(`[data-flag="${flagName}"]`).classList.add('flag-selected');
+        document.getElementById('drawingStatus').style.display = 'block';
+        document.getElementById('currentFlag').textContent = flagName;
+        canvas.style.cursor = 'crosshair';
+        clearCanvas();
+        document.getElementById('deselectBtn').style.display = 'block';
+        
+        // Hide referring expression container when switching flags
+        hideReferringExpressionContainerAndReset();
+        
+        // Show bounding boxes for this flag only
+        showBboxesForFlag(flagName);
+        
+        // Update last selected flag on server
+        updateLastSelectedFlag(flagName);
+    }
+    
+    // Always update flag display when switching flags
+    updateFlagDisplay();
+}
+
+function deselectCurrentFlag() {
+    currentFlag = null;
+    document.querySelectorAll('.flag-btn').forEach(b => b.classList.remove('active', 'annotated'));
+    document.querySelectorAll('.flag-item').forEach(f => f.classList.remove('flag-selected'));
+    document.getElementById('drawingStatus').style.display = 'none';
+    canvas.style.cursor = 'default';
+    clearCanvas();
+    hideAllBboxes();
+    document.getElementById('deselectBtn').style.display = 'none';
+    
+    // Hide referring expression container when deselecting
+    hideReferringExpressionContainerAndReset();
+    
+    updateFlagDisplay();
+}
+
+function updateLastSelectedFlag(flagName) {
+    fetch('/api/update_last_flag', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            flag_name: flagName
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (!data.success) {
+            console.warn('Failed to update last selected flag:', data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error updating last selected flag:', error);
+    });
+}
+
+function refreshAnnotationsFromServer() {
+    fetch('/api/get_annotations/' + document.getElementById('currentImageName').value)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                annotations = data.annotations;
+                if (!annotations.flags) {
+                    annotations.flags = {};
+                }
+                
+                // Convert old format bboxes to new format for consistency
+                Object.keys(annotations.flags).forEach(flagName => {
+                    if (annotations.flags[flagName].bboxes) {
+                        annotations.flags[flagName].bboxes = annotations.flags[flagName].bboxes.map(bbox => {
+                            if (Array.isArray(bbox)) {
+                                // Convert old format to new format
+                                console.log('Converting old bbox format to new format:', bbox);
+                                return {
+                                    coordinates: bbox,
+                                    ref_exp: ""  // Empty referring expression
+                                };
+                            }
+                            return bbox; // Already in new format
+                        });
+                    }
+                });
+                
+                updateFlagDisplay();
+            }
+        })
+        .catch(error => {
+            console.error('Error refreshing annotations:', error);
+        });
+}
+
+function setupNavigation() {
+    // Navigation controls
+    document.getElementById('nextBtn').addEventListener('click', () => navigateToImage('next'));
+    document.getElementById('prevBtn').addEventListener('click', () => navigateToImage('previous'));
+}
+
+function redrawCanvas() {
+    const img = new Image();
+    img.onload = function() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Calculate scaling to fit image to canvas without empty space
+        const scaleX = canvas.width / img.width;
+        const scaleY = canvas.height / img.height;
+        const scale = Math.max(scaleX, scaleY); // Use the larger scale to ensure full coverage
+        
+        // Calculate dimensions after scaling
+        const scaledWidth = img.width * scale;
+        const scaledHeight = img.height * scale;
+        
+        // Center the image on the canvas
+        const offsetX = (canvas.width - scaledWidth) / 2;
+        const offsetY = (canvas.height - scaledHeight) / 2;
+        
+        // Draw the image scaled and centered
+        ctx.drawImage(img, offsetX, offsetY, scaledWidth, scaledHeight);
+        
+        // Redraw bounding boxes for current flag if any
+        if (currentFlag) {
+            showBboxesForFlag(currentFlag);
+        }
+    };
+    img.src = "{{ url_for('serve_image', filename=image_name) }}";
+}
+
+function navigateToImage(direction) {
+    const currentImageName = document.getElementById('currentImageName').value;
+    
+    fetch(`/api/navigate/${direction}/${currentImageName}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                window.location.href = `/annotate/${data.next_image}`;
+            } else {
+                alert('Navigation failed: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Navigation error:', error);
+            alert('Navigation failed. Please try again.');
+        });
+}
+
+function clearCanvas() {
+    // Clear canvas and redraw only the base image (no bounding boxes)
+    const img = new Image();
+    img.onload = function() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Calculate scaling to fit image to canvas without empty space
+        const scaleX = canvas.width / img.width;
+        const scaleY = canvas.height / img.height;
+        const scale = Math.max(scaleX, scaleY); // Use the larger scale to ensure full coverage
+        
+        // Calculate dimensions after scaling
+        const scaledWidth = img.width * scale;
+        const scaledHeight = img.height * scale;
+        
+        // Center the image on the canvas
+        const offsetX = (canvas.width - scaledWidth) / 2;
+        const offsetY = (canvas.height - scaledHeight) / 2;
+        
+        // Draw the image scaled and centered
+        ctx.drawImage(img, offsetX, offsetY, scaledWidth, scaledHeight);
+        
+        // Redraw bounding boxes for current flag if any
+        if (currentFlag) {
+            showBboxesForFlag(currentFlag);
+        }
+    };
+    img.src = "{{ url_for('serve_image', filename=image_name) }}";
+}
+
+function startDrawing(e) {
+    if (!currentFlag || !imageLoaded) return;
+    
+    const rect = canvas.getBoundingClientRect();
+    startX = e.clientX - rect.left;
+    startY = e.clientY - rect.top;
+    isDrawing = true;
+}
+
+function draw(e) {
+    if (!isDrawing) return;
+    
+    const rect = canvas.getBoundingClientRect();
+    const currentX = e.clientX - rect.left;
+    const currentY = e.clientY - rect.top;
+    
+    // Clear canvas and redraw image
+    const img = new Image();
+    img.onload = function() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Calculate scaling to fit image to canvas without empty space
+        const scaleX = canvas.width / img.width;
+        const scaleY = canvas.height / img.height;
+        const scale = Math.max(scaleX, scaleY); // Use the larger scale to ensure full coverage
+        
+        // Calculate dimensions after scaling
+        const scaledWidth = img.width * scale;
+        const scaledHeight = img.height * scale;
+        
+        // Center the image on the canvas
+        const offsetX = (canvas.width - scaledWidth) / 2;
+        const offsetY = (canvas.height - scaledHeight) / 2;
+        
+        // Draw the image scaled and centered
+        ctx.drawImage(img, offsetX, offsetY, scaledWidth, scaledHeight);
+        
+        // Redraw bounding boxes for current flag if any
+        if (currentFlag) {
+            showBboxesForFlag(currentFlag);
+        }
+        
+        // Draw current bounding box with flag color
+        ctx.strokeStyle = flagColors[currentFlag] || '#00ff00';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(startX, startY, currentX - startX, currentY - startY);
+    };
+    img.src = "{{ url_for('serve_image', filename=image_name) }}";
+}
+
+function endDrawing(e) {
+    console.log('=== END DRAWING CALLED ===');
+    console.log('isDrawing:', isDrawing);
+    console.log('currentFlag:', currentFlag);
+    
+    if (!isDrawing) return;
+    
+    const rect = canvas.getBoundingClientRect();
+    const endX = e.clientX - rect.left;
+    const endY = e.clientY - rect.top;
+    
+    isDrawing = false;
+    
+    // Create bounding box coordinates
+    const x1 = Math.min(startX, endX);
+    const y1 = Math.min(startY, endY);
+    const x2 = Math.max(startX, endX);
+    const y2 = Math.max(startY, endY);
+    
+    // Validate bounding box
+    if (x2 - x1 < 10 || y2 - y1 < 10) {
+        alert('Bounding box too small. Please draw a larger box.');
+        return;
+    }
+    
+    // Normalize coordinates to 1-1000 range before saving
+    const normalizedBbox = [
+        normalizeCoordinate(x1, CANVAS_WIDTH),
+        normalizeCoordinate(y1, CANVAS_HEIGHT),
+        normalizeCoordinate(x2, CANVAS_WIDTH),
+        normalizeCoordinate(y2, CANVAS_HEIGHT)
+    ];
+    
+    console.log('Original bbox:', [x1, y1, x2, y2]);
+    console.log('Normalized bbox:', normalizedBbox);
+    
+    // Add bounding box with normalized coordinates
+    console.log('About to call addBoundingBox with:', currentFlag, normalizedBbox);
+    const bboxIndex = addBoundingBox(currentFlag, normalizedBbox);
+    console.log('addBoundingBox returned index:', bboxIndex);
+    console.log('Type of returned index:', typeof bboxIndex);
+    console.log('Is index valid?', bboxIndex >= 0);
+    
+    // Show referring expression input for the new bounding box
+    currentBboxIndex = bboxIndex;
+    lastCreatedBboxIndex = bboxIndex; // Store persistently
+    console.log('Setting currentBboxIndex to:', currentBboxIndex);
+    console.log('Setting lastCreatedBboxIndex to:', lastCreatedBboxIndex);
+    console.log('Drawing completed, showing referring expression input for bbox index:', currentBboxIndex);
+    console.log('About to call showReferringExpressionContainer...');
+    showReferringExpressionContainer();
+    console.log('showReferringExpressionContainer called');
+    
+    // Redraw canvas
+    const img = new Image();
+    img.onload = function() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Calculate scaling to fit image to canvas without empty space
+        const scaleX = canvas.width / img.width;
+        const scaleY = canvas.height / img.height;
+        const scale = Math.max(scaleX, scaleY); // Use the larger scale to ensure full coverage
+        
+        // Calculate dimensions after scaling
+        const scaledWidth = img.width * scale;
+        const scaledHeight = img.height * scale;
+        
+        // Center the image on the canvas
+        const offsetX = (canvas.width - scaledWidth) / 2;
+        const offsetY = (canvas.height - scaledHeight) / 2;
+        
+        // Draw the image scaled and centered
+        ctx.drawImage(img, offsetX, offsetY, scaledWidth, scaledHeight);
+        
+        // Redraw bounding boxes for current flag if any
+        if (currentFlag) {
+            showBboxesForFlag(currentFlag);
+        }
+    };
+    img.src = "{{ url_for('serve_image', filename=image_name) }}";
+}
+
+function addBoundingBox(flagName, bbox) {
+    console.log('Adding bounding box for flag:', flagName, 'bbox:', bbox);
+    
+    if (!annotations.flags[flagName]) {
+        annotations.flags[flagName] = {
+            bboxes: [],
+            timestamp: new Date().toISOString()
+        };
+    }
+    
+    // Add the bbox with empty ref_exp structure
+    const bboxWithRefExp = {
+        coordinates: bbox,
+        ref_exp: ""  // Empty referring expression by default
+    };
+    
+    console.log('About to add bbox to array:', bboxWithRefExp);
+    console.log('Current bboxes array length before:', annotations.flags[flagName].bboxes.length);
+    
+    annotations.flags[flagName].bboxes.push(bboxWithRefExp);
+    
+    // Calculate index AFTER adding (since arrays are 0-indexed)
+    const bboxIndex = annotations.flags[flagName].bboxes.length - 1;
+    
+    console.log('Bbox added at index:', bboxIndex);
+    console.log('Bbox with empty ref_exp:', bboxWithRefExp);
+    console.log('Updated annotations:', annotations);
+    console.log('Final bboxes array length:', annotations.flags[flagName].bboxes.length);
+    console.log('Returning bboxIndex:', bboxIndex);
+    
+    // Save to server with the new structure
+    saveAnnotation(flagName, bboxWithRefExp);
+    
+    // Clear the drawn bounding box from canvas after saving
+    clearCanvas();
+    
+    // Redraw bounding boxes for current flag
+    if (currentFlag) {
+        showBboxesForFlag(currentFlag);
+    }
+    
+    // Update display AFTER everything else
+    updateFlagDisplay();
+    
+    return bboxIndex; // Return the index of the added bounding box
+}
+
+function saveAnnotation(flagName, bbox) {
+    fetch('/api/save_annotation', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            image_name: document.getElementById('currentImageName').value,
+            flag_name: flagName,
+            bbox: bbox
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            console.log('Annotation saved successfully');
+            // Don't refresh immediately - wait for referring expression to be saved
+        } else {
+            alert('Failed to save annotation: ' + data.message);
+        }
+    })
+    .catch(error => {
+        alert('Error saving annotation: ' + error.message);
+    });
+}
+
+function showBboxesForFlag(flagName) {
+    // Clear existing overlays
+    document.getElementById('bboxOverlays').innerHTML = '';
+    
+    // Draw bounding boxes only for the specified flag
+    if (annotations.flags[flagName] && annotations.flags[flagName].bboxes) {
+        annotations.flags[flagName].bboxes.forEach((bbox, index) => {
+            // All bboxes should now be in new format with coordinates and ref_exp
+            let coordinates;
+            if (bbox.coordinates) {
+                coordinates = bbox.coordinates; // New format: dict with coordinates
+            } else if (Array.isArray(bbox)) {
+                // Fallback for old format (should not happen with new system)
+                coordinates = bbox;
+                console.warn('Old bbox format detected, should be converted:', bbox);
+            } else {
+                console.warn('Invalid bbox format:', bbox);
+                return;
+            }
+            
+            // Denormalize coordinates from 1-1000 range back to canvas coordinates
+            const [normX1, normY1, normX2, normY2] = coordinates;
+            const x1 = denormalizeCoordinate(normX1, CANVAS_WIDTH);
+            const y1 = denormalizeCoordinate(normY1, CANVAS_HEIGHT);
+            const x2 = denormalizeCoordinate(normX2, CANVAS_WIDTH);
+            const y2 = denormalizeCoordinate(normY2, CANVAS_HEIGHT);
+            
+            const overlay = document.createElement('div');
+            overlay.className = 'bbox-overlay';
+            overlay.style.position = 'absolute';
+            overlay.style.left = x1 + 'px';
+            overlay.style.top = y1 + 'px';
+            overlay.style.width = (x2 - x1) + 'px';
+            overlay.style.height = (y2 - y1) + 'px';
+            overlay.style.border = `2px solid ${flagColors[flagName] || '#00ff00'}`;
+            overlay.style.background = flagColors[flagName] ? flagColors[flagName] + '20' : 'rgba(0, 255, 0, 0.1)';
+            overlay.style.pointerEvents = 'none';
+            overlay.style.zIndex = '1000';
+            overlay.title = `${flagName} - Box ${index + 1}`;
+            document.getElementById('bboxOverlays').appendChild(overlay);
+        });
+    }
+}
+
+function hideAllBboxes() {
+    document.getElementById('bboxOverlays').innerHTML = '';
+}
+
+function updateFlagDisplay() {
+    console.log('=== UPDATING FLAG DISPLAY ===');
+    console.log('Current annotations:', annotations);
+    console.log('Current flag:', currentFlag);
+    
+    // Get all flag elements
+    const allFlagElements = document.querySelectorAll('.flag-item');
+    const allFlagBtns = document.querySelectorAll('.flag-btn');
+    const allRemoveBtns = document.querySelectorAll('.remove-flag-btn');
+    
+    console.log(`Found ${allFlagElements.length} flag elements, ${allFlagBtns.length} flag buttons, ${allRemoveBtns.length} remove buttons`);
+    
+    // First, reset ALL flags to unselected state
+    allFlagElements.forEach((flagElement, index) => {
+        const flagName = flagElement.dataset.flag;
+        console.log(`Resetting flag ${flagName} (index ${index})`);
+        flagElement.classList.remove('flag-selected', 'flag-annotated');
+        flagElement.classList.add('flag-unselected');
+    });
+    
+    allFlagBtns.forEach((flagBtn, index) => {
+        const flagName = flagBtn.dataset.flag;
+        console.log(`Resetting button for flag ${flagName} (index ${index})`);
+        flagBtn.classList.remove('active', 'annotated');
+    });
+    
+    // Hide ALL remove buttons initially
+    allRemoveBtns.forEach((removeBtn, index) => {
+        const flagName = removeBtn.dataset.flag;
+        console.log(`Hiding remove button for flag ${flagName} (index ${index})`);
+        removeBtn.style.display = 'none';
+    });
+    
+    // Now update each flag based on its annotation status
+    if (annotations && annotations.flags) {
+        Object.keys(annotations.flags).forEach(flagName => {
+            const flag = annotations.flags[flagName];
+            console.log(`Processing flag ${flagName}:`, flag);
+            
+            const flagElement = document.querySelector(`[data-flag="${flagName}"]`);
+            const flagBtn = document.querySelector(`.flag-btn[data-flag="${flagName}"]`);
+            const removeBtn = document.querySelector(`.remove-flag-btn[data-flag="${flagName}"]`);
+            
+            if (!flagElement) {
+                console.error(`Flag element not found for ${flagName}`);
+                return;
+            }
+            if (!flagBtn) {
+                console.error(`Flag button not found for ${flagName}`);
+                return;
+            }
+            if (!removeBtn) {
+                console.error(`Remove button not found for ${flagName}`);
+                return;
+            }
+            
+            if (flag.bboxes && flag.bboxes.length > 0) {
+                console.log(`Flag ${flagName} has ${flag.bboxes.length} bboxes - making it RED`);
+                
+                // Flag has annotations - show as annotated (red)
+                flagElement.classList.remove('flag-unselected', 'flag-selected');
+                flagElement.classList.add('flag-annotated');
+                
+                // Update button state
+                flagBtn.classList.remove('active');
+                flagBtn.classList.add('annotated');
+                
+                // Show remove button
+                removeBtn.style.display = 'block';
+                console.log(`Showing remove button for ${flagName}`);
+                
+                // Update bounding box count
+                const bboxCount = flagElement.querySelector('.bbox-count');
+                if (bboxCount) {
+                    bboxCount.style.display = 'block';
+                    bboxCount.innerHTML = `<span class="badge bg-success">${flag.bboxes.length} bounding box${flag.bboxes.length > 1 ? 'es' : ''}</span>`;
+                }
+                
+                // Show bounding box list
+                const bboxList = flagElement.querySelector('.bbox-list');
+                                if (bboxList) {
+                    bboxList.style.display = 'block';
+                    bboxList.innerHTML = flag.bboxes.map((bbox, index) => {
+                        // All bboxes should now be in new format with coordinates and ref_exp
+                        let coordinates, referringExpression;
+                        if (bbox.coordinates) {
+                            coordinates = bbox.coordinates; // New format: dict with coordinates
+                            referringExpression = bbox.ref_exp || 'No description';  // Use ref_exp as requested
+                        } else if (Array.isArray(bbox)) {
+                            // Fallback for old format (should not happen with new system)
+                            coordinates = bbox;
+                            referringExpression = 'No description (old format)';
+                            console.warn('Old bbox format detected, should be converted:', bbox);
+                        } else {
+                            console.warn('Invalid bbox format:', bbox);
+                            return '';
+                        }
+                        
+                        const [x1, y1, x2, y2] = coordinates;
+                        return `
+                            <div class="bbox-info">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span>Box ${index + 1}: (${x1}, ${y1}) to (${x2}, ${y2}) [Normalized 1-1000]</span>
+                                    <button class="btn btn-sm btn-danger" onclick="removeBbox('${flagName}', ${index})" title="Delete this bounding box">
+                                        <i class="fas fa-trash"></i> Delete
+                                    </button>
+                                </div>
+                                <div class="mt-2">
+                                    <small class="text-muted">
+                                        <i class="fas fa-comment me-1"></i>
+                                        <strong>Referring Expression:</strong> ${referringExpression}
+                                    </small>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                }
+                
+                // Show coordinates display
+                const coordinatesDisplay = flagElement.querySelector('.coordinates-display');
+                if (coordinatesDisplay) {
+                    coordinatesDisplay.style.display = 'block';
+                    const coordinatesText = coordinatesDisplay.querySelector('.coordinates-text');
+                    if (coordinatesText && flag.bboxes.length > 0) {
+                        const lastBbox = flag.bboxes[flag.bboxes.length - 1];
+                        let coordinates;
+                        if (lastBbox.coordinates) {
+                            coordinates = lastBbox.coordinates;
+                        } else if (Array.isArray(lastBbox)) {
+                            coordinates = lastBbox; // Fallback for old format
+                        } else {
+                            coordinates = [0, 0, 0, 0]; // Default fallback
+                        }
+                        const [x1, y1, x2, y2] = coordinates;
+                        coordinatesText.textContent = `(${x1}, ${y1}) to (${x2}, ${y2}) [Normalized]`;
+                    }
+                }
+            } else {
+                console.log(`Flag ${flagName} has no bboxes - keeping it WHITE`);
+                // Flag has no annotations - show as unselected (white)
+                flagElement.classList.remove('flag-selected', 'flag-annotated');
+                flagElement.classList.add('flag-unselected');
+                
+                // Update button state
+                flagBtn.classList.remove('active', 'annotated');
+                
+                // Hide remove button
+                removeBtn.style.display = 'none';
+                
+                // Hide elements
+                const bboxCount = flagElement.querySelector('.bbox-count');
+                if (bboxCount) bboxCount.style.display = 'none';
+                
+                const bboxList = flagElement.querySelector('.bbox-list');
+                if (bboxList) bboxList.style.display = 'none';
+                
+                const coordinatesDisplay = flagElement.querySelector('.coordinates-display');
+                if (coordinatesDisplay) coordinatesDisplay.style.display = 'none';
+            }
+        });
+    } else {
+        console.log('No annotations.flags found');
+    }
+    
+    // Update button states based on current selection
+    if (currentFlag) {
+        const currentFlagBtn = document.querySelector(`.flag-btn[data-flag="${currentFlag}"]`);
+        if (currentFlagBtn) {
+            console.log(`Setting current flag ${currentFlag} as active`);
+            currentFlagBtn.classList.remove('annotated');
+            currentFlagBtn.classList.add('active');
+        }
+    }
+    
+    console.log('=== FLAG DISPLAY UPDATE COMPLETE ===');
+}
+
+function removeFlag(flagName) {
+    if (confirm(`Remove all bounding boxes for ${flagName}?`)) {
+        delete annotations.flags[flagName];
+        updateFlagDisplay();
+        
+        // Clear canvas if this was the current flag
+        if (currentFlag === flagName) {
+            currentFlag = null;
+            document.getElementById('drawingStatus').style.display = 'none';
+            canvas.style.cursor = 'default';
+            clearCanvas();
+            hideAllBboxes();
+            document.getElementById('deselectBtn').style.display = 'none';
+            
+            // Hide referring expression container when removing current flag
+            hideReferringExpressionContainerAndReset();
+            
+            // Clear active state from button
+            document.querySelectorAll('.flag-btn').forEach(b => b.classList.remove('active'));
+        }
+        
+        // Remove from server
+        fetch('/api/remove_annotation', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                image_name: document.getElementById('currentImageName').value,
+                flag_name: flagName
+            })
+        });
+    }
+}
+
+function removeBbox(flagName, bboxIndex) {
+    if (confirm(`Remove bounding box ${bboxIndex + 1} for ${flagName}?`)) {
+        annotations.flags[flagName].bboxes.splice(bboxIndex, 1);
+        
+        if (annotations.flags[flagName].bboxes.length === 0) {
+            delete annotations.flags[flagName];
+        }
+        
+        updateFlagDisplay();
+        
+        // Hide referring expression container if removing current bbox
+        if (currentFlag === flagName && currentBboxIndex === bboxIndex) {
+            hideReferringExpressionContainerAndReset();
+        }
+        
+        // Redraw canvas if this was the current flag
+        if (currentFlag === flagName) {
+            clearCanvas();
+            if (annotations.flags[flagName] && annotations.flags[flagName].bboxes.length > 0) {
+                showBboxesForFlag(flagName);
+            }
+        }
+        
+        // Remove from server
+        fetch('/api/remove_annotation', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                image_name: document.getElementById('currentImageName').value,
+                flag_name: flagName,
+                bbox_index: bboxIndex
+            })
+        });
+    }
+}
+
+
+</script>
+{% endblock %}

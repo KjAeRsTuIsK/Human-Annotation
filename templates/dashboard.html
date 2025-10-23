@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Image Annotation System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>
+                <i class="fas fa-tachometer-alt me-2"></i>Welcome, {{ user_name }}!
+            </h2>
+            <div class="text-muted">
+                <i class="fas fa-images me-1"></i>{{ user_images|length }} images assigned
+                {% if user_folder_path %}
+                <br><small><i class="fas fa-folder me-1"></i>{{ user_folder_path }}</small>
+                {% endif %}
+            </div>
+        </div>
+        
+        {% if not user_folder_path %}
+        <div class="alert alert-info" role="alert">
+            <i class="fas fa-info-circle me-2"></i>
+            <strong>No user folder selected.</strong> 
+            <a href="{{ url_for('select_user_folder') }}" class="alert-link">Select a user folder</a> to start annotating images.
+        </div>
+        {% endif %}
+        
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="fas fa-list me-2"></i>Your Assigned Images
+                </h5>
+                <p class="card-text text-muted">
+                    Click on any image to start annotating. You can add multiple bounding boxes for different flags on each image.
+                </p>
+                
+                {% if user_images %}
+                <div class="row">
+                    {% for image_path in user_images %}
+                    {% set image_name = image_path.split('/')[-1] %}
+                    {% set annotations = session.get('annotations', {}).get(image_name, {}) %}
+                    {% set has_annotations = annotations.get('flags', {})|length > 0 %}
+                    {% set metadata = image_metadata.get(image_name, {}) %}
+                    {% set image_type = metadata.get('type', 'unknown') %}
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card h-100">
+                            <img src="{{ url_for('serve_image', filename=image_name) }}" 
+                                 class="card-img-top" alt="{{ image_name }}" 
+                                 style="height: 200px; object-fit: cover;">
+                            <div class="card-body">
+                                <h6 class="card-title">
+                                    {{ image_name.replace('.jpg', '').replace('.png', '') }}
+                                    {% if image_type == 'edited' %}
+                                        <span class="badge bg-warning text-dark ms-1">EDITED</span>
+                                    {% elif image_type == 'fake' %}
+                                        <span class="badge bg-danger ms-1">AI-GENERATED</span>
+                                    {% endif %}
+                                </h6>
+                                
+                                <!-- Annotation Status -->
+                                {% if has_annotations %}
+                                <div class="mb-2">
+                                    <span class="badge bg-success">
+                                        <i class="fas fa-check me-1"></i>Annotated
+                                    </span>
+                                    <small class="text-muted d-block mt-1">
+                                        {{ annotations.flags|length }} flag{{ 's' if annotations.flags|length != 1 else '' }} annotated
+                                    </small>
+                                </div>
+                                {% else %}
+                                <div class="mb-2">
+                                    <span class="badge bg-secondary">
+                                        <i class="fas fa-clock me-1"></i>Not Started
+                                    </span>
+                                </div>
+                                {% endif %}
+                                
+                                <p class="card-text text-muted small">
+                                    {% if has_annotations %}
+                                        Continue annotating or review existing annotations
+                                    {% else %}
+                                        Click to start annotating this image
+                                    {% endif %}
+                                </p>
+                                
+                                <a href="{{ url_for('annotate', image_name=image_name) }}" 
+                                   class="btn btn-primary btn-sm">
+                                    <i class="fas fa-edit me-1"></i>
+                                    {% if has_annotations %}Continue{% else %}Annotate{% endif %}
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-images fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No images assigned yet</h5>
+                    <p class="text-muted">Please contact an administrator to get images assigned.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

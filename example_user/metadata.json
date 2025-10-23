@@ -1,0 +1,17 @@
+[
+  {
+    "image_path": "/path/to/example_image.jpg",
+    "type": "edited",
+    "source": "example",
+    "filename": "example_image.jpg",
+    "description": "This is an example edited image with tampering in the central area.",
+    "instruction": {
+      "Effect": "make the person appear sad",
+      "Change Target": "human",
+      "Explanation": [
+        "the person in the center",
+        "change facial expression to show sadness with downturned mouth and lowered eyes"
+      ]
+    }
+  }
+]
