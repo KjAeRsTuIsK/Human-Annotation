@@ -62,10 +62,6 @@ class AnnotationSystem:
                 print(f"Error: Failed to load user folder '{self.user_folder_path}': {message}")
                 print("Please provide a valid user folder path.")
                 sys.exit(1)
-        else:
-            print("No user folder specified. Please provide a user folder path.")
-            print("Example: python app.py --user-folder sft_splits/user1")
-            sys.exit(1)
     
     def set_user_folder(self, user_folder_path: str) -> Tuple[bool, str]:
         """Set the user folder path and load images from it"""
