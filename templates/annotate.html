@@ -10,16 +10,16 @@
         overflow: visible;  /* Changed from hidden to visible to prevent cropping */
         border: 2px solid #ddd;
         border-radius: 8px;
-        width: 800px;
-        height: 800px;
+        width: 600px;
+        height: 600px;
         margin: 0 auto;
     }
     .annotation-canvas {
         border: none;
         border-radius: 6px;
         cursor: crosshair;
-        width: 800px !important;   /* Force exact width */
-        height: 800px !important;  /* Force exact height */
+        width: 600px !important;   /* Force exact width */
+        height: 600px !important;  /* Force exact height */
         display: block;             /* Ensure proper display */
         max-width: none;            /* Remove any max-width constraints */
         max-height: none;           /* Remove any max-height constraints */
@@ -182,7 +182,7 @@
                 </div>
                 
                 <div class="annotation-container mx-auto">
-                    <canvas id="annotationCanvas" class="annotation-canvas" width="800" height="800"></canvas>
+                    <canvas id="annotationCanvas" class="annotation-canvas" width="600" height="600"></canvas>
                     <div id="bboxOverlays"></div>
                 </div>
                 
@@ -382,8 +382,24 @@ const flagColors = {
 };
 
 // Canvas dimensions
-const CANVAS_WIDTH = 800;
-const CANVAS_HEIGHT = 800;
+const CANVAS_WIDTH = 600;
+const CANVAS_HEIGHT = 600;
+
+// High-quality image resizing function with bilinear interpolation
+function resizeImageWithInterpolation(sourceCanvas, targetCanvas, targetWidth, targetHeight) {
+    const sourceCtx = sourceCanvas.getContext('2d');
+    const targetCtx = targetCanvas.getContext('2d');
+    
+    // Enable high-quality image smoothing
+    targetCtx.imageSmoothingEnabled = true;
+    targetCtx.imageSmoothingQuality = 'high';
+    
+    // Clear target canvas
+    targetCtx.clearRect(0, 0, targetWidth, targetHeight);
+    
+    // Draw with high-quality scaling
+    targetCtx.drawImage(sourceCanvas, 0, 0, targetWidth, targetHeight);
+}
 
 // Normalize coordinates to 1-1000 range
 function normalizeCoordinate(value, maxDimension) {
@@ -567,11 +583,11 @@ document.addEventListener('DOMContentLoaded', function() {
     canvas = document.getElementById('annotationCanvas');
     ctx = canvas.getContext('2d');
     
-    // Ensure canvas is exactly 800x800
-    canvas.width = 800;
-    canvas.height = 800;
-    canvas.style.width = '800px';
-    canvas.style.height = '800px';
+    // Ensure canvas is exactly 600x600
+    canvas.width = 600;
+    canvas.height = 600;
+    canvas.style.width = '600px';
+    canvas.style.height = '600px';
     
     // Load image
     const img = new Image();
@@ -584,18 +600,22 @@ document.addEventListener('DOMContentLoaded', function() {
         
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
-        // Resize image to exactly fill the 800x800 canvas (no cropping, no empty space)
+        // Set image smoothing for better interpolation
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        
+        // Resize image to exactly fill the 800x800 canvas with proper interpolation
         const scaledWidth = canvas.width;   // Always 800
         const scaledHeight = canvas.height;  // Always 800
         const offsetX = 0;  // No centering needed - image fills entire canvas
         const offsetY = 0;  // No centering needed - image fills entire canvas
         
-        // Draw the image resized to exactly 800x800
+        // Draw the image resized to exactly 800x800 with high-quality interpolation
         ctx.drawImage(img, offsetX, offsetY, scaledWidth, scaledHeight);
         
         imageLoaded = true;
         console.log('Image drawn to canvas, imageLoaded:', imageLoaded);
-        console.log('Image resized to exactly:', scaledWidth, 'x', scaledHeight, '(800x800, no cropping, no empty space)');
+        console.log('Image resized to exactly:', scaledWidth, 'x', scaledHeight, '(600x600, high-quality bilinear interpolation)');
         
         // Restore last selected flag if available
         const lastSelectedFlag = document.getElementById('lastSelectedFlag').value;
@@ -798,13 +818,17 @@ function redrawCanvas() {
     img.onload = function() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
-        // Resize image to exactly fill the 800x800 canvas (no cropping, no empty space)
+        // Set image smoothing for better interpolation
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        
+        // Resize image to exactly fill the 800x800 canvas with proper interpolation
         const scaledWidth = canvas.width;   // Always 800
         const scaledHeight = canvas.height;  // Always 800
         const offsetX = 0;  // No centering needed - image fills entire canvas
         const offsetY = 0;  // No centering needed - image fills entire canvas
         
-        // Draw the image resized to exactly 800x800
+        // Draw the image resized to exactly 800x800 with high-quality interpolation
         ctx.drawImage(img, offsetX, offsetY, scaledWidth, scaledHeight);
         
         // Redraw bounding boxes for current flag if any
@@ -839,13 +863,17 @@ function clearCanvas() {
     img.onload = function() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
-        // Resize image to exactly fill the 800x800 canvas (no cropping, no empty space)
+        // Set image smoothing for better interpolation
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        
+        // Resize image to exactly fill the 800x800 canvas with proper interpolation
         const scaledWidth = canvas.width;   // Always 800
         const scaledHeight = canvas.height;  // Always 800
         const offsetX = 0;  // No centering needed - image fills entire canvas
         const offsetY = 0;  // No centering needed - image fills entire canvas
         
-        // Draw the image resized to exactly 800x800
+        // Draw the image resized to exactly 800x800 with high-quality interpolation
         ctx.drawImage(img, offsetX, offsetY, scaledWidth, scaledHeight);
         
         // Redraw bounding boxes for current flag if any
@@ -877,13 +905,17 @@ function draw(e) {
     img.onload = function() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
-        // Resize image to exactly fill the 800x800 canvas (no cropping, no empty space)
+        // Set image smoothing for better interpolation
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        
+        // Resize image to exactly fill the 800x800 canvas with proper interpolation
         const scaledWidth = canvas.width;   // Always 800
         const scaledHeight = canvas.height;  // Always 800
         const offsetX = 0;  // No centering needed - image fills entire canvas
         const offsetY = 0;  // No centering needed - image fills entire canvas
         
-        // Draw the image resized to exactly 800x800
+        // Draw the image resized to exactly 800x800 with high-quality interpolation
         ctx.drawImage(img, offsetX, offsetY, scaledWidth, scaledHeight);
         
         // Redraw bounding boxes for current flag if any
@@ -957,13 +989,17 @@ function endDrawing(e) {
     img.onload = function() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
-        // Resize image to exactly fill the 800x800 canvas (no cropping, no empty space)
+        // Set image smoothing for better interpolation
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        
+        // Resize image to exactly fill the 800x800 canvas with proper interpolation
         const scaledWidth = canvas.width;   // Always 800
         const scaledHeight = canvas.height;  // Always 800
         const offsetX = 0;  // No centering needed - image fills entire canvas
         const offsetY = 0;  // No centering needed - image fills entire canvas
         
-        // Draw the image resized to exactly 800x800
+        // Draw the image resized to exactly 800x800 with high-quality interpolation
         ctx.drawImage(img, offsetX, offsetY, scaledWidth, scaledHeight);
         
         // Redraw bounding boxes for current flag if any
