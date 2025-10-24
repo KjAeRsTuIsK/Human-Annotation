@@ -7,7 +7,7 @@
     .annotation-container {
         position: relative;
         display: block;
-        overflow: hidden;
+        overflow: visible;  /* Changed from hidden to visible to prevent cropping */
         border: 2px solid #ddd;
         border-radius: 8px;
         width: 800px;
@@ -18,8 +18,11 @@
         border: none;
         border-radius: 6px;
         cursor: crosshair;
-        width: 800px;
-        height: 800px;
+        width: 800px !important;   /* Force exact width */
+        height: 800px !important;  /* Force exact height */
+        display: block;             /* Ensure proper display */
+        max-width: none;            /* Remove any max-width constraints */
+        max-height: none;           /* Remove any max-height constraints */
     }
     .bbox-overlay {
         position: absolute;
@@ -564,11 +567,20 @@ document.addEventListener('DOMContentLoaded', function() {
     canvas = document.getElementById('annotationCanvas');
     ctx = canvas.getContext('2d');
     
+    // Ensure canvas is exactly 800x800
+    canvas.width = 800;
+    canvas.height = 800;
+    canvas.style.width = '800px';
+    canvas.style.height = '800px';
+    
     // Load image
     const img = new Image();
     img.onload = function() {
         console.log('Image loaded successfully:', img.width, 'x', img.height);
         console.log('Canvas dimensions:', canvas.width, 'x', canvas.height);
+        console.log('Canvas style dimensions:', canvas.style.width, 'x', canvas.style.height);
+        console.log('Canvas client dimensions:', canvas.clientWidth, 'x', canvas.clientHeight);
+        console.log('Image dimensions:', img.width, 'x', img.height);
         
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
