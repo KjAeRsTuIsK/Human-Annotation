@@ -572,25 +572,18 @@ document.addEventListener('DOMContentLoaded', function() {
         
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
-        // Calculate scaling to fit image to canvas without cropping
-        const scaleX = canvas.width / img.width;
-        const scaleY = canvas.height / img.height;
-        const scale = Math.min(scaleX, scaleY); // Use the smaller scale to ensure no cropping
+        // Resize image to exactly fill the 800x800 canvas (no cropping, no empty space)
+        const scaledWidth = canvas.width;   // Always 800
+        const scaledHeight = canvas.height;  // Always 800
+        const offsetX = 0;  // No centering needed - image fills entire canvas
+        const offsetY = 0;  // No centering needed - image fills entire canvas
         
-        // Calculate dimensions after scaling
-        const scaledWidth = img.width * scale;
-        const scaledHeight = img.height * scale;
-        
-        // Center the image on the canvas
-        const offsetX = (canvas.width - scaledWidth) / 2;
-        const offsetY = (canvas.height - scaledHeight) / 2;
-        
-        // Draw the image scaled and centered
+        // Draw the image resized to exactly 800x800
         ctx.drawImage(img, offsetX, offsetY, scaledWidth, scaledHeight);
         
         imageLoaded = true;
         console.log('Image drawn to canvas, imageLoaded:', imageLoaded);
-        console.log('Image scaled to:', scaledWidth, 'x', scaledHeight, 'with scale:', scale, '(no cropping)');
+        console.log('Image resized to exactly:', scaledWidth, 'x', scaledHeight, '(800x800, no cropping, no empty space)');
         
         // Restore last selected flag if available
         const lastSelectedFlag = document.getElementById('lastSelectedFlag').value;
@@ -793,20 +786,13 @@ function redrawCanvas() {
     img.onload = function() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
-        // Calculate scaling to fit image to canvas without cropping
-        const scaleX = canvas.width / img.width;
-        const scaleY = canvas.height / img.height;
-        const scale = Math.min(scaleX, scaleY); // Use the smaller scale to ensure no cropping
+        // Resize image to exactly fill the 800x800 canvas (no cropping, no empty space)
+        const scaledWidth = canvas.width;   // Always 800
+        const scaledHeight = canvas.height;  // Always 800
+        const offsetX = 0;  // No centering needed - image fills entire canvas
+        const offsetY = 0;  // No centering needed - image fills entire canvas
         
-        // Calculate dimensions after scaling
-        const scaledWidth = img.width * scale;
-        const scaledHeight = img.height * scale;
-        
-        // Center the image on the canvas
-        const offsetX = (canvas.width - scaledWidth) / 2;
-        const offsetY = (canvas.height - scaledHeight) / 2;
-        
-        // Draw the image scaled and centered
+        // Draw the image resized to exactly 800x800
         ctx.drawImage(img, offsetX, offsetY, scaledWidth, scaledHeight);
         
         // Redraw bounding boxes for current flag if any
@@ -841,20 +827,13 @@ function clearCanvas() {
     img.onload = function() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
-        // Calculate scaling to fit image to canvas without cropping
-        const scaleX = canvas.width / img.width;
-        const scaleY = canvas.height / img.height;
-        const scale = Math.min(scaleX, scaleY); // Use the smaller scale to ensure no cropping
+        // Resize image to exactly fill the 800x800 canvas (no cropping, no empty space)
+        const scaledWidth = canvas.width;   // Always 800
+        const scaledHeight = canvas.height;  // Always 800
+        const offsetX = 0;  // No centering needed - image fills entire canvas
+        const offsetY = 0;  // No centering needed - image fills entire canvas
         
-        // Calculate dimensions after scaling
-        const scaledWidth = img.width * scale;
-        const scaledHeight = img.height * scale;
-        
-        // Center the image on the canvas
-        const offsetX = (canvas.width - scaledWidth) / 2;
-        const offsetY = (canvas.height - scaledHeight) / 2;
-        
-        // Draw the image scaled and centered
+        // Draw the image resized to exactly 800x800
         ctx.drawImage(img, offsetX, offsetY, scaledWidth, scaledHeight);
         
         // Redraw bounding boxes for current flag if any
@@ -886,20 +865,13 @@ function draw(e) {
     img.onload = function() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
-        // Calculate scaling to fit image to canvas without cropping
-        const scaleX = canvas.width / img.width;
-        const scaleY = canvas.height / img.height;
-        const scale = Math.min(scaleX, scaleY); // Use the smaller scale to ensure no cropping
+        // Resize image to exactly fill the 800x800 canvas (no cropping, no empty space)
+        const scaledWidth = canvas.width;   // Always 800
+        const scaledHeight = canvas.height;  // Always 800
+        const offsetX = 0;  // No centering needed - image fills entire canvas
+        const offsetY = 0;  // No centering needed - image fills entire canvas
         
-        // Calculate dimensions after scaling
-        const scaledWidth = img.width * scale;
-        const scaledHeight = img.height * scale;
-        
-        // Center the image on the canvas
-        const offsetX = (canvas.width - scaledWidth) / 2;
-        const offsetY = (canvas.height - scaledHeight) / 2;
-        
-        // Draw the image scaled and centered
+        // Draw the image resized to exactly 800x800
         ctx.drawImage(img, offsetX, offsetY, scaledWidth, scaledHeight);
         
         // Redraw bounding boxes for current flag if any
@@ -973,20 +945,13 @@ function endDrawing(e) {
     img.onload = function() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
-        // Calculate scaling to fit image to canvas without cropping
-        const scaleX = canvas.width / img.width;
-        const scaleY = canvas.height / img.height;
-        const scale = Math.min(scaleX, scaleY); // Use the smaller scale to ensure no cropping
+        // Resize image to exactly fill the 800x800 canvas (no cropping, no empty space)
+        const scaledWidth = canvas.width;   // Always 800
+        const scaledHeight = canvas.height;  // Always 800
+        const offsetX = 0;  // No centering needed - image fills entire canvas
+        const offsetY = 0;  // No centering needed - image fills entire canvas
         
-        // Calculate dimensions after scaling
-        const scaledWidth = img.width * scale;
-        const scaledHeight = img.height * scale;
-        
-        // Center the image on the canvas
-        const offsetX = (canvas.width - scaledWidth) / 2;
-        const offsetY = (canvas.height - scaledHeight) / 2;
-        
-        // Draw the image scaled and centered
+        // Draw the image resized to exactly 800x800
         ctx.drawImage(img, offsetX, offsetY, scaledWidth, scaledHeight);
         
         // Redraw bounding boxes for current flag if any
