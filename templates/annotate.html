@@ -572,10 +572,10 @@ document.addEventListener('DOMContentLoaded', function() {
         
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
-        // Calculate scaling to fit image to canvas without empty space
+        // Calculate scaling to fit image to canvas without cropping
         const scaleX = canvas.width / img.width;
         const scaleY = canvas.height / img.height;
-        const scale = Math.max(scaleX, scaleY); // Use the larger scale to ensure full coverage
+        const scale = Math.min(scaleX, scaleY); // Use the smaller scale to ensure no cropping
         
         // Calculate dimensions after scaling
         const scaledWidth = img.width * scale;
@@ -590,7 +590,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         imageLoaded = true;
         console.log('Image drawn to canvas, imageLoaded:', imageLoaded);
-        console.log('Image scaled to:', scaledWidth, 'x', scaledHeight, 'with scale:', scale);
+        console.log('Image scaled to:', scaledWidth, 'x', scaledHeight, 'with scale:', scale, '(no cropping)');
         
         // Restore last selected flag if available
         const lastSelectedFlag = document.getElementById('lastSelectedFlag').value;
@@ -793,10 +793,10 @@ function redrawCanvas() {
     img.onload = function() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
-        // Calculate scaling to fit image to canvas without empty space
+        // Calculate scaling to fit image to canvas without cropping
         const scaleX = canvas.width / img.width;
         const scaleY = canvas.height / img.height;
-        const scale = Math.max(scaleX, scaleY); // Use the larger scale to ensure full coverage
+        const scale = Math.min(scaleX, scaleY); // Use the smaller scale to ensure no cropping
         
         // Calculate dimensions after scaling
         const scaledWidth = img.width * scale;
@@ -841,10 +841,10 @@ function clearCanvas() {
     img.onload = function() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
-        // Calculate scaling to fit image to canvas without empty space
+        // Calculate scaling to fit image to canvas without cropping
         const scaleX = canvas.width / img.width;
         const scaleY = canvas.height / img.height;
-        const scale = Math.max(scaleX, scaleY); // Use the larger scale to ensure full coverage
+        const scale = Math.min(scaleX, scaleY); // Use the smaller scale to ensure no cropping
         
         // Calculate dimensions after scaling
         const scaledWidth = img.width * scale;
@@ -886,10 +886,10 @@ function draw(e) {
     img.onload = function() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
-        // Calculate scaling to fit image to canvas without empty space
+        // Calculate scaling to fit image to canvas without cropping
         const scaleX = canvas.width / img.width;
         const scaleY = canvas.height / img.height;
-        const scale = Math.max(scaleX, scaleY); // Use the larger scale to ensure full coverage
+        const scale = Math.min(scaleX, scaleY); // Use the smaller scale to ensure no cropping
         
         // Calculate dimensions after scaling
         const scaledWidth = img.width * scale;
@@ -973,10 +973,10 @@ function endDrawing(e) {
     img.onload = function() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
-        // Calculate scaling to fit image to canvas without empty space
+        // Calculate scaling to fit image to canvas without cropping
         const scaleX = canvas.width / img.width;
         const scaleY = canvas.height / img.height;
-        const scale = Math.max(scaleX, scaleY); // Use the larger scale to ensure full coverage
+        const scale = Math.min(scaleX, scaleY); // Use the smaller scale to ensure no cropping
         
         // Calculate dimensions after scaling
         const scaledWidth = img.width * scale;
